@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"os"
 
+	"EventTide-backend/internal/users/delivery"
+	"EventTide-backend/internal/users/repository"
+	"EventTide-backend/internal/users/usecase"
 	"EventTide-backend/pkg/database"
 
 	"github.com/joho/godotenv"
@@ -15,12 +18,12 @@ import (
 func main() {
 	fmt.Println("=== Memulai Event & Media Platform API ===")
 
-	// 1. Memuat konfigurasi dari file .env
+	// Memuat konfigurasi dari file .env
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("⚠️ File .env tidak ditemukan, menggunakan environment sistem.")
 	}
 
-	// 2. Membuka koneksi database yang akan dipakai terus-menerus oleh API
+	// Membuka koneksi database yang akan dipakai terus-menerus oleh API
 	db, err := database.ConnectDB(
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
@@ -34,11 +37,22 @@ func main() {
 	}
 	defer db.Close() // Menjaga koneksi tetap hidup sampai server dimatikan
 
-	// (Di masa depan, Anda memasukkan 'db' ini ke layer Repository di sini)
-	// eventRepo := &events.Repository{DB: db}
+	// 1. Inisialisasi Repository
+	userRepo := repository.NewPgUserRepository(db)
 
-	// 3. Setup Router & Server HTTP
+	// 2. Inisialisasi Usecase (menyuntikkan Repo)
+	userUsecase := usecase.NewUserUsecase(userRepo)
+
+	// 3. Inisialisasi Handler (menyuntikkan Usecase)
+	userHandler := &delivery.UserHandler{
+		UserUC: userUsecase,
+	}
+
+	// Setup Router & Server HTTP
 	mux := http.NewServeMux()
+
+	// 4. Mendaftarkan Route
+	mux.HandleFunc("POST /api/users/register", userHandler.RegisterUser)
 
 	// Endpoint percobaan
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
@@ -51,7 +65,7 @@ func main() {
 		port = "8080"
 	}
 
-	fmt.Printf("🚀 Server menyala dan melayani request di port %s\n", port)
+	fmt.Printf("🚀 Server running: http://localhost:%s\n", port)
 	if err := http.ListenAndServe(":"+port, mux); err != nil {
 		log.Fatalf("❌ Gagal menjalankan server: %v", err)
 	}

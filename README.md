@@ -48,6 +48,12 @@ eventide-backend/
 
 ## Commands
 
+- **Project Setup**
+
+    ```bash
+    go mod tidy
+    ```
+
 - **Run Migrations**
     - Up:
 
