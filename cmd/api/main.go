@@ -1,15 +1,13 @@
 package main
 
 import (
+	"EventTide-backend/pkg/database"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
-	"EventTide-backend/internal/users/delivery"
-	"EventTide-backend/internal/users/repository"
-	"EventTide-backend/internal/users/usecase"
-	"EventTide-backend/pkg/database"
+	usersDelivery "EventTide-backend/internal/users/delivery"
 
 	"github.com/joho/godotenv"
 )
@@ -18,12 +16,12 @@ import (
 func main() {
 	fmt.Println("=== Memulai Event & Media Platform API ===")
 
-	// Memuat konfigurasi dari file .env
+	// 1. Memuat konfigurasi dari file .env
 	if err := godotenv.Load(".env"); err != nil {
 		log.Println("⚠️ File .env tidak ditemukan, menggunakan environment sistem.")
 	}
 
-	// Membuka koneksi database yang akan dipakai terus-menerus oleh API
+	// 2. Membuka koneksi database yang akan dipakai terus-menerus oleh API
 	db, err := database.ConnectDB(
 		os.Getenv("DB_HOST"),
 		os.Getenv("DB_PORT"),
@@ -37,22 +35,11 @@ func main() {
 	}
 	defer db.Close() // Menjaga koneksi tetap hidup sampai server dimatikan
 
-	// 1. Inisialisasi Repository
-	userRepo := repository.NewPgUserRepository(db)
-
-	// 2. Inisialisasi Usecase (menyuntikkan Repo)
-	userUsecase := usecase.NewUserUsecase(userRepo)
-
-	// 3. Inisialisasi Handler (menyuntikkan Usecase)
-	userHandler := &delivery.UserHandler{
-		UserUC: userUsecase,
-	}
-
-	// Setup Router & Server HTTP
+	// 3. Setup Router & Server HTTP
 	mux := http.NewServeMux()
 
 	// 4. Mendaftarkan Route
-	mux.HandleFunc("POST /api/users/register", userHandler.RegisterUser)
+	usersDelivery.RegisterRoutes(mux, db)
 
 	// Endpoint percobaan
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
