@@ -12,11 +12,24 @@ type UserHandler struct {
 	UserUC domain.UserUsecase
 }
 
+type UserData struct {
+}
+
 // Struct khusus untuk memetakan input JSON dari klien
 type RegisterRequest struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+// Struct untuk input dari klien
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (h *UserHandler) GetUserData() {
+
 }
 
 // Fungsi ini yang akan didaftarkan ke Router
@@ -43,5 +56,31 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message": "Registrasi berhasil",
 		"data":    user, // Field password otomatis hilang karena tag json:"-" di Domain
+	})
+}
+
+func (h *UserHandler) LoginUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	var req LoginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Format JSON tidak valid"})
+		return
+	}
+
+	// Panggil Usecase Login
+	tokenString, err := h.UserUC.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized) // 401 Unauthorized
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	// Berhasil Login! Kembalikan Token JWT
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message": "Login berhasil",
+		"token":   tokenString,
 	})
 }

@@ -27,4 +27,7 @@ type UserRepository interface {
 // Handler (Delivery) akan memanggil kontrak ini
 type UserUsecase interface {
 	Register(ctx context.Context, username, email, password string) (*User, error)
+
+	// Login Feature yang akan mengembalikan string (Token JWT)
+	Login(ctx context.Context, email, password string) (string, error)
 }

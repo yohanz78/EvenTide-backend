@@ -3,9 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
+	"os"
+	"time"
 
 	"EventTide-backend/internal/domain"
 
+	jwt "github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -47,4 +50,41 @@ func (u *userUsecase) Register(ctx context.Context, username, email, password st
 	}
 
 	return newUser, nil
+}
+
+func (u *userUsecase) Login(ctx context.Context, email, password string) (string, error) {
+	// 1. Cari user berdasarkan email di database
+	user, err := u.userRepo.FindByEmail(ctx, email)
+	if err != nil {
+		return "", err
+	}
+	if user == nil {
+		return "", errors.New("email atau password salah") // Jangan pernah sebut spesifik "email tidak ditemukan" demi keamanan
+	}
+
+	// 2. Bandingkan password murni dengan password hash di database
+	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
+	if err != nil {
+		return "", errors.New("email atau password salah")
+	}
+
+	// 3. Pembuatan Gelang VIP (JWT)
+	// Claims adalah data apa saja yang mau kita "titipkan" di dalam token tersebut
+	claims := jwt.MapClaims{
+		"user_id":  user.ID,
+		"username": user.Username,
+		"exp":      time.Now().Add(time.Hour * 24).Unix(), // Token kadaluarsa dalam 24 jam
+	}
+
+	// Membuat struktur token menggunakan algoritma HS256
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// 4. Stempel token tersebut menggunakan JWT_SECRET dari .env
+	secretKey := []byte(os.Getenv("JWT_SECRET"))
+	signedToken, err := token.SignedString(secretKey)
+	if err != nil {
+		return "", errors.New("gagal membuat token keamanan")
+	}
+
+	return signedToken, nil
 }

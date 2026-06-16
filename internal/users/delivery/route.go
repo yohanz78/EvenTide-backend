@@ -24,6 +24,7 @@ func RegisterRoutes(mux *http.ServeMux, db *sql.DB) {
 
 	// 4. Daftarkan semua endpoint HTTP yang berkaitan dengan Users di sini
 	mux.HandleFunc("POST /api/users/register", handler.RegisterUser)
+	mux.HandleFunc("POST /api/users/login", handler.LoginUser)
 
 	// Jika nanti ada endpoint login atau get profile, cukup tambahkan di sini:
 	// mux.HandleFunc("POST /api/users/login", handler.LoginUser)
